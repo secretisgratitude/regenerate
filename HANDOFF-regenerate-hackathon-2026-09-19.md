@@ -1,119 +1,112 @@
-# HANDOFF — Regenerate / TrueFoundry Agent Harness Hackathon (2026-09-19 13:12)
+# HANDOFF — Regenerate / TrueFoundry Agent Harness Hackathon (2026-09-19)
 
-_Scope: `repo:regenerate` (github.com/secretisgratitude/regenerate, PRIVATE)_
+_Repo: github.com/secretisgratitude/regenerate — **PUBLIC** as of 2026-09-19._
 
-## Goal
+## Status: SUBMITTED. Waiting on announcements.
 
-Win a top-3 prize at the TrueFoundry Agent Harness Hackathon. Single judging
-axis: "Best use of TrueFoundry/TrueForge." Submission is a 3-5 minute recorded
-video plus a public repo. **Hard deadline 4:00 PM; freeze building at 3:30.**
+Schedule (PDT): submissions closed 4:00 PM · selected demos ~5:00 PM ·
+judging and awards ~6:30 PM · event ends 8:00 PM. Starred times were a working
+schedule; only the 4:00 deadline was confirmed by the event lead.
 
-## Status
+Submitted on HackerSquad with project name **Regenerate**, the full README
+description, TrueFoundry checked, stack line
+(MCP Streamable HTTP, Node.js, SQLite, OpenAI), git remote, and the recorded
+demo. Two takes exist on their platform; **judges see the latest one (Take 2,
+3:31 PM, 4:03)** — there is no take selector, only re-record.
 
-**BUILD: done and proven. Nothing left to build.**
+## What was built
 
-- Mock payer with SQLite ledger, payload-hash binding, server-minted operation
-  ids. Ledger rows immutable (UPDATE/DELETE triggers verified firing).
-- MCP server over Streamable HTTP, three tools:
-  `get_claim` (read), `prepare_resubmission` (mints id + sha256, cannot write),
-  `submit_claim` (the ONLY shielded tool, writes).
-- 4 unit tests pass. `tests/e2e.sh` proves all four scenarios over real MCP.
-- TrueForge agent `regenerate` created (id `01m2xfgr0zxkxwtfkecz5m808g`),
-  connector `two-key-claims` registered, OpenAI provider connected ($50 event
-  credit), sandbox enabled.
-- **Full loop verified live through the UI twice today**: agent read the claim
-  via MCP, computed in the sandbox (Code Mode / Python), paused on the shielded
-  tool, approval committed ONE row (`RCPT-018DDA2E`), retry replayed the SAME
-  receipt with no second row.
-- Beat 3 (tampered amount refused) verified over real MCP, zero rows written.
+A mock payer with an immutable SQLite ledger, exposed to TrueForge over MCP
+(Streamable HTTP) as three tools:
 
-**NOT DONE:**
-- Zero full rehearsals with narration and a timer.
-- Nothing recorded.
-- Repo still PRIVATE. Must be public to submit — **this is a gated action,
-  ask Eric before flipping.**
-- Nothing submitted on HackerSquad.
+- `get_claim` — read
+- `prepare_resubmission` — mints a server-side operation id and a sha256 of the
+  canonicalized `{claim_id, amount}`; cannot write
+- `submit_claim` — the ONLY shielded tool, the only one that writes
 
-## Files touched
+Plus one skill, `skills/safe-resubmission/SKILL.md`, carrying the retry policy
+as portable instructions rather than buried prompt text. Loaded into the agent
+from the public repo (skills load by git URL, folder, branch — which is why the
+repo had to go public).
 
-- `server/ledger.mjs` — the payer. propose/approve/deny/submit, hash check at
-  commit, atomic operation-status + ledger-row write.
-- `server/mcp-server.mjs` — three MCP tools + /approve /deny /commit /health.
-- `server/fixtures.mjs` — one synthetic claim, CLM-75377, $75,377, code A8.
-- `tests/ledger.test.mjs` — four deterministic scenarios.
-- `tests/e2e.sh` — same four over real MCP + HTTP. The rehearsal script.
-- `preflight.sh` — 11 checks. Run before EVERY take. `SKIP_CONNECTOR_CHECK=1`
-  skips the expensive one.
-- `reset-demo.sh` — clean ledger between takes. **Non-negotiable.**
-- `README.md` — the honest framing, before/after diagram, boundaries section.
-- `BEAT-SHEET.md` — timed script, think/decide/remember structure.
-- `RUN-THE-DEMO.md` — exact commands and paste-text.
-- `REHEARSE.md` — four-run rehearsal plan and delivery notes.
-- `AGENT-SETUP.md` — config to recreate the agent if needed.
+## The claim, stated correctly
 
-## Key decisions
+TrueForge pauses on **every** shielded call, including retries — verified live,
+two submits produced two separate pauses with different tool_call_ids. It does
+NOT hand out reusable permissions.
 
-- **Named "Regenerate"** over Two-Key. Two-Key points at multisig (prior art);
-  Regenerate names the actual insight — agents re-derive rather than replay.
-- **Shield on `submit_claim`, not on the proposing tool.** Adopted from a Codex
-  plan. Originally the shield sat on the safe tool while the real commit went
-  over plain HTTP outside the harness — a judge would have caught that.
-- **CORRECTED THE CENTRAL CLAIM after adversarial review.** The original framing
-  said an agent could carry a stale approval to a changed payload. **That is
-  FALSE.** TrueForge's approval references one specific pending tool call; a
-  retry is a NEW call raising its OWN pause (verified: two submits, two
-  tool_call_ids, two pauses). The honest, narrower, defensible claim: the
-  harness cannot RELATE one approval to another. Every yes is correct in
-  isolation; nothing compares them. **Do not reintroduce the old framing.**
-- **No subagents.** Three independent reviews agreed: no parallel branch exists,
-  and nondeterminism hurts a short recording.
-- **One fixture, not several.** The demo is about the approval boundary, not
-  claims processing.
-- **Three-brain result on the win-gap:** Codex won over two Claude brains. Don't
-  just *narrate* the constraint — **stage it.** Deliberately approve a changed
-  amount on camera and let the payer refuse it. Evidence beats assertion.
-  Codex's line, best sentence anyone produced today:
-  *"The harness authorizes a tool call. My application cares about a business
-  operation. Those aren't the same unit."*
+The honest, narrower claim: **the harness cannot RELATE one approval to
+another.** Each approval references one specific pending tool call, so the same
+business operation can be approved twice and every yes is correct in isolation.
+Nothing compares them.
 
-## Open threads / blockers
+Codex's framing, the best sentence produced:
+*"The harness's unit of authorization is a tool invocation, while the
+application's unit of correctness is a business operation."*
 
-- **THE MACHINE IS THE RISK, NOT THE CODE.** TrueForge has been OOM-killed ~5
-  times. Root cause investigated: 25 days uptime, 73M swapouts, ~400 MB free
-  with ~8 GB stuck "inactive". It dies on *allocation spikes*, and the biggest
-  spike is the **sandbox spawn — which fires on every run and is a scored
-  capability.** Fixed so far: killed 4 stuck Cursor extension hosts pegged at
-  100% CPU (two for 16 days; load 82 → 2), killed the YesOnUs `next-server`
-  (798 MB), closed apps. Still pending: `sudo purge`, quit Preview.
-- **Claude must NOT start TrueForge or poll it.** Two of the deaths were
-  Claude's own writes, one was its preflight. Eric runs TrueForge in his own
-  terminal; Claude reads only when asked.
-- Claude's Chrome extension cannot reach localhost — cannot drive the demo UI.
-  Eric drives, Claude verifies ledger state between beats.
-- Agent sometimes detours (inspects tool schemas, tried `pip install` once).
-  Mitigated with `preload: true` and explicit instructions. Say "it's checking
-  the tool contract" and carry on — do not restart a take for this.
-- Stale `ledger-test` connector from last night is still listed. Connectors
-  can't be deleted (#494). Harmless; don't let it confuse you on camera.
+**Do not reintroduce the old framing** ("an agent can carry a stale approval to
+a changed payload"). That was FALSE, was caught in adversarial review, and was
+corrected before recording.
 
-## Next step
+**Confirmed app-side by Cy (TrueFoundry) in person before recording:** relating
+approvals is an application concern, not something TrueForge is likely to do.
+That turned the boundary section from a hedge into a design decision.
 
-Run `sudo purge`, quit Preview, restart TrueForge in Eric's own terminal, then
-do one full narrated rehearsal against `REHEARSE.md` with a timer.
+## Late fix worth remembering
+
+`tests/e2e.sh` asserted a global `COUNT(*) = 1` on the ledger. By beat 3 the
+live demo had already committed a row, so the test printed **FAIL** on camera at
+the exact moment it was meant to prove correctness. It could never have passed
+in that position.
+
+Fixed by scoping the assertion to the three operations the run itself creates,
+and additionally checking the surviving row is the happy-path operation. It now
+passes in any ledger state and says something stronger:
+`three operations attempted, exactly one row written`.
+
+## Open threads
+
+- **Announcements pending.** If top 10, there is a live demo slot ~5:00 PM.
+- **Q&A answers, ready:**
+  - *"Why not in the harness?"* → "I asked. It's app-side. That's where I put it."
+  - *"Isn't this Okta?"* → "Identity tells you who's asking. It doesn't tell you
+    what you already answered."
+  - Don't know → "I'd have to check before I tell you something wrong."
+- **Question for Cy, unasked:** "You mentioned the human-vs-agent headers.
+  That's who's asking. What I ran into is whether *this* approval is the same
+  operation as one I already approved. App-side, or something the harness might
+  carry?"
+
+## What transfers, and what does not
+
+**Transfers — the pattern, ~40 lines wherever there is a write endpoint:**
+server mints the operation id; fingerprint the payload at prepare; re-verify at
+commit; same fingerprint replays the receipt, different fingerprint refuses.
+Relevant to ClaimRail, the YesOnUs OD sync, and the Medicare billing agent —
+anywhere an agent drives a write. In claims a duplicate submission is an audit
+finding, not a cleanup task.
+
+**Does not transfer:** this repo. It is a mock payer with one synthetic claim.
+Its job was to make an argument on camera. Do not extend it into a product.
+
+**TrueForge itself:** watch, do not build on yet. Pinned 0.2.0, known approval
+lifecycle bugs (#508 double-click, #494/#498 undeletable connectors and skills),
+and it OOM-killed itself five times on this machine.
+
+## The honest accounting
+
+Max upside $2,000 at maybe 15%. Expected value roughly $300 for a full day.
+Meanwhile **$75,377 across 21 claims sat untouched for 57 days** behind a Stedi
+837P/835 enrollment for payer 011, CH00033 in EDISS, and the HETS attestation
+for NPI 1700350485 — plus the N290 rendering provider reassignment that gates
+all Medicare downstream.
+
+That is the richest hour available anywhere, and it is a portal login and a
+form. Next working session goes there, not here.
 
 ## Don't do
 
-- **Don't claim TrueForge lets an agent reuse an approval.** It doesn't. That
-  framing was caught and corrected; reintroducing it gets the video dismissed
-  by the only audience that matters.
-- **Don't let Claude launch TrueForge** — its process launches get reaped, and
-  its writes have killed it under memory pressure.
-- **Don't record without `./reset-demo.sh` first.** A dirty ledger already
-  produced TWO rows in testing, which destroys the "one row" punchline.
-- **Don't double-click Approve.** Bug #508 cancels the turn it just approved.
-- **Don't upgrade TrueForge.** Pinned 0.2.0; PRs #815/#807 change the approval
-  lifecycle.
-- **Don't add another MCP server, subagents, or a second fixture.** All
-  considered and rejected — new dependencies risk the one thing that works.
-- **Don't say "moves money."** It's a local SQLite mock ledger.
-- **Don't build more.** Presentation is the weakest axis and the only one left.
+- Don't claim TrueForge lets an agent reuse an approval.
+- Don't extend this repo.
+- Don't re-record unless an announcement requires it — judges see the latest take.
+- Don't let Claude start or poll TrueForge.
